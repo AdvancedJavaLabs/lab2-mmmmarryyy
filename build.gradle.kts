@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.9.20"
+    java
     application
 }
 
@@ -11,9 +12,12 @@ repositories {
 }
 
 dependencies {
-    implementation("javax.jms:jms-api:2.0.1")
+    implementation("jakarta.jms:jakarta.jms-api:2.0.1")
     implementation("org.apache.activemq:activemq-broker:6.1.1")
     testImplementation(kotlin("test"))
+
+    implementation("com.rabbitmq:amqp-client:5.16.0")
+    implementation("org.apache.kafka:kafka-clients:3.5.1")
 }
 
 tasks.test {
@@ -21,9 +25,9 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(8)
+    jvmToolchain(21)
 }
 
 application {
-    mainClass.set("MainKt")
+    mainClass.set("Main")
 }

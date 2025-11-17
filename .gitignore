@@ -1,0 +1,8 @@
+.DS_Store
+build
+.gradle
+.idea
+bench_outputs
+bench_inputs
+first_results.csv
+graphics/generate.py
