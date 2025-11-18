@@ -1,3 +1,4 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/QODoQuhO)
 # Распределенная обработка текстовых данных с использованием брокера сообщений
 
 ## Цель задания:
@@ -44,3 +45,14 @@ RabbitMQ --- прост в развёртывании, понятная моде
 
 ## Эксперименты и анализ результатов:
 Оцените масштабируемость приложения. Используйте различные объемы данных и количество воркеров для определения, насколько эффективно приложение масштабируется.
+
+
+Сборка:
+```bash
+./gradlew clean build
+```
+
+Запустить rabbit + kafka:
+```bash
+docker compose up -d
+```
