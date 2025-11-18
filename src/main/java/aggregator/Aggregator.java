@@ -6,7 +6,6 @@ import model.ResultMessage;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
@@ -21,38 +20,52 @@ public class Aggregator {
     private final AtomicLong resultCount = new AtomicLong(0);
 
     private final ConcurrentHashMap<String, LongAdder> globalCounts = new ConcurrentHashMap<>();
-    private final ConcurrentLinkedQueue<String> anonymizedPieces = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<String> allSentences = new ConcurrentLinkedQueue<>();
+    private final List<String> orderedAnonymizedPieces;
+    private final List<List<String>> allSortedSentencesLists;
+    private final Set<Integer> processedTaskIds = ConcurrentHashMap.newKeySet();
 
     private final int topN;
+    private final int expectedNumberOfResults;
 
-    public Aggregator(MessageBroker broker, int topN) {
+    public Aggregator(MessageBroker broker, int topN, int expectedNumberOfResults) {
         this.broker = broker;
         this.topN = topN;
+        this.expectedNumberOfResults = expectedNumberOfResults;
+
+        this.orderedAnonymizedPieces = Collections.synchronizedList(Arrays.asList(new String[expectedNumberOfResults]));
+        this.allSortedSentencesLists = Collections.synchronizedList(Arrays.asList(new ArrayList[expectedNumberOfResults]));
     }
 
-    public void start(int expectedNumberOfResults, Consumer<AggregatedResult> onComplete) throws Exception {
+    public void start(Consumer<AggregatedResult> onComplete) {
         broker.subscribeResults(result -> {
+            if (!processedTaskIds.add(result.taskId)) {
+                System.out.println("[Aggregator] SOMETHING WENT WRONG: taskId уже был обработан: " + result.taskId);
+                return;
+            }
+
             merge(result);
 
             long currentNumberOfResults = resultCount.incrementAndGet();
 
-            if (currentNumberOfResults >= expectedNumberOfResults) {
+            if (currentNumberOfResults > expectedNumberOfResults) {
+                System.out.println("[Aggregator] SOMETHING WENT WRONG; currentNumberOfResults = " + currentNumberOfResults + " expectedNumberOfResults = " + expectedNumberOfResults);
+            }
+
+            if (currentNumberOfResults == expectedNumberOfResults) {
                 System.out.println("[Aggregator] currentNumberOfResults = " + currentNumberOfResults + " expectedNumberOfResults = " + expectedNumberOfResults);
 
                 AggregatedResult aggregated = new AggregatedResult();
 
                 aggregated.totalWordCount = totalWords.longValue();
                 aggregated.globalTopWords = getTopN(topN);
-                aggregated.combinedAnonymized = new ArrayList<>(anonymizedPieces);
+
+                aggregated.combinedAnonymized = flattenAnonymizedText();
 
                 long positive = sumPositive.sum();
                 long negative = sumNegative.sum();
                 aggregated.averageSentiment = (positive + negative) == 0 ? 0.0 : (positive - negative) / (double)(positive + negative);
 
-                List<String> sorted = new ArrayList<>(allSentences);
-                sorted.sort(Comparator.comparingInt(String::length)); // TODO: rewrite on merge in merge sort
-                aggregated.allSortedSentences = sorted;
+                aggregated.allSortedSentences = mergeAllSortedSentences();
 
                 try {
                     onComplete.accept(aggregated);
@@ -68,9 +81,59 @@ public class Aggregator {
         sumNegative.add(result.negativeCount);
 
         result.topWords.forEach((k,v) -> globalCounts.computeIfAbsent(k, kk -> new LongAdder()).add(v));
-        anonymizedPieces.add(result.anonymizedText);
 
-        allSentences.addAll(result.sortedSentences);
+        int taskId = result.taskId;
+        orderedAnonymizedPieces.set(taskId, result.anonymizedText);
+
+        allSortedSentencesLists.set(taskId, result.sortedSentences);
+    }
+
+    private List<String> flattenAnonymizedText() {
+        List<String> result = new ArrayList<>();
+
+        for (String piece : orderedAnonymizedPieces) {
+            if (piece != null) {
+                result.add(piece);
+            }
+        }
+
+        return result;
+    }
+
+    private List<String> mergeAllSortedSentences() {
+        return kWayMerge(allSortedSentencesLists);
+    }
+
+    private List<String> kWayMerge(List<List<String>> lists) {
+        List<String> result = new ArrayList<>();
+        PriorityQueue<QueueNode> pq = new PriorityQueue<>(
+                Comparator.comparingInt((QueueNode node) -> node.sentence.length())
+        );
+
+        for (int i = 0; i < lists.size(); i++) {
+            List<String> list = lists.get(i);
+
+            if (list != null && !list.isEmpty()) {
+                pq.offer(new QueueNode(list.getFirst(), i, 0));
+            }
+        }
+
+        while (!pq.isEmpty()) {
+            QueueNode node = pq.poll();
+            result.add(node.sentence);
+
+            int nextIndex = node.index + 1;
+            List<String> list = lists.get(node.listIndex);
+
+            if (nextIndex < list.size()) {
+                pq.offer(new QueueNode(list.get(nextIndex), node.listIndex, nextIndex));
+            }
+        }
+
+        return result;
+    }
+
+    private record QueueNode(String sentence, int listIndex, int index) {
     }
 
     private Map<String,Long> getTopN(int n) {

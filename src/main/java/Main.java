@@ -85,10 +85,10 @@ public class Main {
             int numberOfTasks = producer.splitAndPublish(Path.of(inputPath), config.chunkBy, config.chunkSize);
 
             CountDownLatch done = new CountDownLatch(1);
-            Aggregator aggregator = new Aggregator(broker, config.topN);
+            Aggregator aggregator = new Aggregator(broker, config.topN, numberOfTasks);
             String finalOut = outputPath;
 
-            aggregator.start(numberOfTasks, aggregatedResult -> {
+            aggregator.start(aggregatedResult -> {
                 try {
                     new ResultSink().write(aggregatedResult, Path.of(finalOut));
                 } catch (Exception e) {

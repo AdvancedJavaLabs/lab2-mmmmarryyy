@@ -26,7 +26,7 @@ public class ProducerSplitter {
 
             while (chunkIterator.hasNext()) {
                 String chunk = chunkIterator.next();
-                TaskMessage message = TaskMessage.of(chunk);
+                TaskMessage message = new TaskMessage(chunkCount, chunk);
 
                 broker.publishTask(message);
 

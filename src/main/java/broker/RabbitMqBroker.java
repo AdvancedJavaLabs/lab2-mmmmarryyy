@@ -48,7 +48,7 @@ public class RabbitMqBroker implements MessageBroker {
 
         channel.basicConsume(
                 TASK_QUEUE,
-                true,  // true == auto acknowledged
+                false,  // false == manual acknowledgment
                 this::handleTaskDelivery,
                 consumerTag -> System.out.println("Consumer was cancelled: " + consumerTag)
         );
@@ -68,7 +68,13 @@ public class RabbitMqBroker implements MessageBroker {
             byte[] body = delivery.getBody();
             TaskMessage taskMessage = mapper.readValue(body, TaskMessage.class);
             taskHandler.accept(taskMessage);
-        } catch (IOException e) {
+
+            channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+        } catch (Exception e) {
+            try {
+                channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, true);
+            } catch (IOException ex) {
+            }
         }
     }
 

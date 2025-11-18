@@ -19,7 +19,7 @@ public class Worker {
         this.pool = Executors.newFixedThreadPool(parallelism);
     }
 
-    public void start(String placeholder, int topN) throws Exception {
+    public void start(String placeholder, int topN) {
         Consumer<TaskMessage> handler = task -> {
             pool.submit(() -> process(task, placeholder, topN));
         };
@@ -41,7 +41,6 @@ public class Worker {
             ResultMessage res = new ResultMessage(task.id, wordCount, topWords, positive, negative, anonimazied, sorted);
             broker.publishResult(res);
         } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 

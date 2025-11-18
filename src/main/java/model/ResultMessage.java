@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ResultMessage {
-    public String taskId;
+    public int taskId;
     public long wordCount;
     public Map<String, Long> topWords;
     public long positiveCount;
@@ -17,7 +17,7 @@ public class ResultMessage {
 
     @JsonCreator
     public ResultMessage(
-            @JsonProperty("taskId") String taskId,
+            @JsonProperty("taskId") int taskId,
             @JsonProperty("wordCount") long wordCount,
             @JsonProperty("topWords") Map<String, Long> topWords,
             @JsonProperty("positiveCount") long positiveCount,

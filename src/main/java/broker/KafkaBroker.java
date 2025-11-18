@@ -134,7 +134,7 @@ public class KafkaBroker implements MessageBroker {
     @Override
     public void publishTask(TaskMessage taskMessage) throws Exception {
         byte[] data = mapper.writeValueAsBytes(taskMessage);
-        producer.send(new ProducerRecord<>(TASK_TOPIC, taskMessage.id, data));
+        producer.send(new ProducerRecord<>(TASK_TOPIC, String.valueOf(taskMessage.id), data));
     }
 
     @Override
@@ -145,7 +145,7 @@ public class KafkaBroker implements MessageBroker {
     @Override
     public void publishResult(ResultMessage resultMessage) throws Exception {
         byte[] data = mapper.writeValueAsBytes(resultMessage);
-        producer.send(new ProducerRecord<>(RESULT_TOPIC, resultMessage.taskId, data));
+        producer.send(new ProducerRecord<>(RESULT_TOPIC, String.valueOf(resultMessage.taskId), data));
     }
 
     @Override
