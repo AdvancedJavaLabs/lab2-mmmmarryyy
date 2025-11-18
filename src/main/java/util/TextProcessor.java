@@ -54,7 +54,7 @@ public class TextProcessor {
         return counter;
     }
 
-    public static Map<String,Long> topNCounts(String text, int n) {
+    public static Map<String,Long> topCounts(String text) {
         Matcher matcher = WORD.matcher(text.toLowerCase());
         Map<String, Long> wordCounter = new HashMap<>();
 
@@ -65,7 +65,6 @@ public class TextProcessor {
 
         return wordCounter.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                .limit(n)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a,b)->a, HashMap::new));
     }
 

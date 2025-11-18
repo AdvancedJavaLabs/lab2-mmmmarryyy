@@ -36,7 +36,7 @@ public class SerialRunner {
                 long wordCount = TextProcessor.wordCount(chunk);
                 totalWords += wordCount;
                 
-                var top = TextProcessor.topNCounts(chunk, config.topN);
+                var top = TextProcessor.topCounts(chunk);
                 top.forEach((k, v) -> globalTopN.merge(k, v, Long::sum));
                 
                 long[] positiveNegative = TextProcessor.lexiconSentiment(chunk);

@@ -1,13 +1,10 @@
 import aggregator.Aggregator;
-import broker.InMemoryBroker;
-import broker.KafkaBroker;
-import broker.MessageBroker;
-import broker.RabbitMqBroker;
+import broker.*;
 import config.AppConfig;
 import producer.ProducerSplitter;
 import serial.SerialRunner;
 import sink.ResultSink;
-import worker.Worker;
+import worker.WorkerManager;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -75,35 +72,42 @@ public class Main {
             System.out.println("[Main] Serial finished");
         } else if (config.mode == AppConfig.Mode.PARALLEL){
             MessageBroker broker = switch (config.broker) {
-                case RABBITMQ -> new RabbitMqBroker("localhost", 5672, "guest", "guest");
+                case RABBITMQ -> new RabbitMqBrokerMultipleConsumers("localhost", 5672, "guest", "guest");
                 case KAFKA -> new KafkaBroker("localhost:9092", "group");
                 default -> new InMemoryBroker();
             };
 
-            ProducerSplitter producer = new ProducerSplitter(broker);
+            try {
+                ProducerSplitter producer = new ProducerSplitter(broker);
 
-            int numberOfTasks = producer.splitAndPublish(Path.of(inputPath), config.chunkBy, config.chunkSize);
+                int numberOfTasks = producer.splitAndPublish(Path.of(inputPath), config.chunkBy, config.chunkSize);
 
-            CountDownLatch done = new CountDownLatch(1);
-            Aggregator aggregator = new Aggregator(broker, config.topN, numberOfTasks);
-            String finalOut = outputPath;
+                CountDownLatch done = new CountDownLatch(1);
+                Aggregator aggregator = new Aggregator(broker, config.topN, numberOfTasks);
+                String finalOut = outputPath;
 
-            aggregator.start(aggregatedResult -> {
-                try {
-                    new ResultSink().write(aggregatedResult, Path.of(finalOut));
-                } catch (Exception e) {
-                }
+                aggregator.start(aggregatedResult -> {
+                    try {
+                        new ResultSink().write(aggregatedResult, Path.of(finalOut));
+                    } catch (Exception e) {
+                    }
 
-                done.countDown();
-            });
+                    done.countDown();
+                });
 
-            Worker worker = new Worker(broker, config.parallelism);
-            worker.start(config.placeholder, config.topN);
+                //            WorkerThreadPool worker = new WorkerThreadPool(broker, config.parallelism);
+                //            worker.start(config.placeholder, config.topN);
+                WorkerManager workerManager = new WorkerManager(broker, config.parallelism);
+                workerManager.startAll(config.placeholder, config.topN);
 
-            done.await();
+                done.await();
 
-            worker.stop();
-            broker.close();
+                //            worker.stop();
+                workerManager.stopAll();
+                broker.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         Instant end = Instant.now();

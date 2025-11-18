@@ -19,7 +19,7 @@ public class Worker {
         this.pool = Executors.newFixedThreadPool(parallelism);
     }
 
-    public void start(String placeholder, int topN) {
+    public void start(String placeholder, int topN) throws Exception {
         Consumer<TaskMessage> handler = task -> {
             pool.submit(() -> process(task, placeholder, topN));
         };
@@ -29,7 +29,7 @@ public class Worker {
     private void process(TaskMessage task, String placeholder, int topN) {
         try {
             long wordCount = TextProcessor.wordCount(task.textChunk);
-            Map<String,Long> topWords = TextProcessor.topNCounts(task.textChunk, topN);
+            Map<String,Long> topWords = TextProcessor.topCounts(task.textChunk);
 
             long[] pn = TextProcessor.lexiconSentiment(task.textChunk);
             long positive = pn[0];

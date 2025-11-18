@@ -36,7 +36,7 @@ public class Aggregator {
         this.allSortedSentencesLists = Collections.synchronizedList(Arrays.asList(new ArrayList[expectedNumberOfResults]));
     }
 
-    public void start(Consumer<AggregatedResult> onComplete) {
+    public void start(Consumer<AggregatedResult> onComplete) throws Exception {
         broker.subscribeResults(result -> {
             if (!processedTaskIds.add(result.taskId)) {
                 System.out.println("[Aggregator] SOMETHING WENT WRONG: taskId уже был обработан: " + result.taskId);
